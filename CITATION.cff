@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Be-NQS: VMC and fixed-node DMC for the beryllium atom"
+abstract: >-
+  Variational and fixed-node diffusion Monte Carlo for the beryllium atom
+  in JAX, built around one question: of the radial freedoms in a compact
+  multi-determinant ansatz, which ones change the nodal surface, and by
+  how much.
+type: software
+authors:
+  - family-names: Agus
+    given-names: Francesco
+version: 1.0.0
+date-released: "2026-10-13"
+license: MIT
+repository-code: "https://github.com/kauma03/be-nqs-nodal-study"
+keywords:
+  - quantum Monte Carlo
+  - variational Monte Carlo
+  - fixed-node diffusion Monte Carlo
+  - neural quantum states
+  - nodal surface
+  - beryllium

@@ -1,0 +1,1242 @@
+\documentclass[aps,prb,reprint,amsmath,amssymb,superscriptaddress,nofootinbib]{revtex4-2}
+
+% --- PACKAGES ---
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{dcolumn}
+\usepackage{bm}
+\usepackage{physics}
+\usepackage{hyperref}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{booktabs}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+% --- MODEL LABELS (change here to rename everywhere) ---
+\newcommand{\mS}[1]{\ensuremath{\textsf{S#1}}}
+\newcommand{\mQ}{\ensuremath{\textsf{Q}}}
+\newcommand{\mQb}{\ensuremath{\textsf{Q}'}}
+\newcommand{\mL}{\ensuremath{\textsf{L}}}
+\newcommand{\mU}{\ensuremath{\textsf{U}}}
+\newcommand{\mQJ}{\ensuremath{\textsf{Q+J}_1}}
+\newcommand{\mUJ}{\ensuremath{\textsf{U+J}_1}}
+\newcommand{\mFJ}{\ensuremath{\textsf{F+J}_1}}
+\newcommand{\mD}{\ensuremath{\textsf{D}}}
+\newcommand{\mDU}{\ensuremath{\textsf{D}_{\textsf{U}}}}
+\newcommand{\mDJ}{\ensuremath{\textsf{D+J}_1}}
+% Figures live in paper/figures/. A missing file gives a framed placeholder
+% instead of an error, so the manuscript always compiles.
+\newcommand{\figfile}[2]{%
+  \IfFileExists{figures/#2}{\includegraphics[width=#1]{figures/#2}}{%
+    \fbox{\parbox{0.95#1}{\centering\small\vspace{2em}%
+      Missing figure: \texttt{\detokenize{#2}}\vspace{2em}}}}}
+\newcommand{\Eh}{\,E_h}
+\newcommand{\mHa}{\,\mathrm{mHa}}
+
+\begin{document}
+
+% --- TITLE & METADATA ---
+\title{What a Neural Jastrow Factor Can and Cannot Learn:\\
+A Controlled Variational Monte Carlo Study of the Beryllium Atom}
+
+\author{Francesco Agus}
+% Matricola rimossa: il repository e' pubblico. Inserisci qui
+% l'affiliazione istituzionale, oppure lascia la riga commentata.
+%\affiliation{}
+
+\date{\today}
+
+% --- ABSTRACT ---
+\begin{abstract}
+We study the ground state of the beryllium atom with variational Monte Carlo
+(VMC) and fixed-node diffusion Monte Carlo (FN-DMC). The trial wave functions
+are products of a determinant part and a Jastrow factor that contains a
+neural network. The Jastrow factor is positive, so FN-DMC measures the quality
+of the determinant part alone. In a series of four single-determinant trial
+functions with the same node, a neural network must learn the
+electron-electron cusps. It reproduces the antiparallel-spin cusp to $0.7\%$
+and misses the parallel-spin cusp by $81\%$, with no measurable effect on the
+energy. For a
+complete-active-space expansion over the $2s^2$ and $2p^2$ configurations we
+show that the determinant part factorises into a positive function and a
+nodal function of two radial functions and one number, and we give the
+transformations of the orbitals that leave the node unchanged. Across nine
+trial functions, those with a radial modulation of the $1s$ orbital have a
+fixed-node energy $0.20(3)\mHa$ lower than those without it. Neither the VMC
+energy nor the configuration-mixing coefficient detects this difference, and
+a single gauge-invariant number does not order nodes whose radial functions
+differ. A $3d^2$ configuration and a one-body Jastrow term do not change the
+node measurably. The difference $E_{\mathrm{VMC}} - E_{\mathrm{FN}}$ is
+$0.2$--$0.8\mHa$, larger than the fixed-node error, which is $0.14(2)\mHa$ for
+the trial functions with a modulated $1s$ orbital.
+\end{abstract}
+
+\maketitle
+
+
+% ============================================================================
+\section{Introduction}
+\label{sec:intro}
+% ============================================================================
+
+A common trial wave function for electrons has the Slater-Jastrow form,
+\begin{equation}
+    \Psi(\mathbf{R}) = D(\mathbf{R})\, e^{J(\mathbf{R})} .
+    \label{eq:slater_jastrow}
+\end{equation}
+The determinant part $D$ is antisymmetric. The Jastrow factor $e^{J}$ is
+symmetric and positive, and describes the correlation of electron pairs at
+short distance. Since $e^{J} > 0$, the nodal surface of $\Psi$, the set where
+$\Psi = 0$, is the nodal surface of $D$. Neural networks are now used to
+represent $J$ and, in some approaches, the whole wave
+function~\cite{carleo2017,pfau2020,hermann2020}. A network inside $J$
+increases the flexibility of the positive factor. It does not change the node.
+
+The variational Monte Carlo (VMC) energy contains two errors: the error of the
+node and the error of the positive factor. Fixed-node diffusion Monte Carlo
+(FN-DMC) separates them. In the limit of zero time step it gives the lowest
+energy compatible with the node of the trial function, whatever the positive
+factor~\cite{reynolds1982,foulkes2001}. The difference
+$E_{\mathrm{VMC}} - E_{\mathrm{FN}}$ is then the error of the positive factor,
+and $E_{\mathrm{FN}} - E_{\mathrm{exact}}$ is the error of the node. When two
+trial functions differ in both factors, their VMC energies do not tell which
+factor is responsible for the difference.
+
+The beryllium atom is a test case for this question. Its $2s^2$ configuration
+is nearly degenerate with $2p^2$, and a single determinant gives a fixed-node
+error of order $10\mHa$~\cite{todobehfnode}. The exact non-relativistic
+energy is known to better than $1\,\mu E_h$~\cite{pachucki2006}. With four
+electrons the node of a few-configuration wave function can be written in
+closed form~\cite{bressanini_nodes}.
+
+We study two sets of trial functions. The first is a series of four
+single-determinant trial functions with the same node and different Jastrow
+factors, from none to a neural network that must learn the electron-electron
+cusps. The second is a complete-active-space expansion over $2s^2$ and $2p^2$,
+with optional $3d^2$ configurations, multiplied by a Jastrow factor with a
+three-body neural network. For the second set we show that the determinant
+part factorises into a positive function and a nodal function, and we list
+the transformations of the orbitals that leave the node unchanged. We then
+compute VMC and FN-DMC energies for nine trial functions that differ in one
+element at a time: the radial form of the orbitals, a one-body Jastrow term,
+the $3d^2$ configurations, and the random seed of the optimisation.
+
+The results are the following. In the single-determinant series the network
+learns the antiparallel-spin cusp and not the parallel-spin cusp, and the
+energy does not depend on the latter. The VMC error of the multi-configuration
+trial functions comes mostly from the Jastrow factor. The node depends on the
+shape of the $1s$ orbital: the trial functions in which the $1s$ orbital is
+modulated have a fixed-node energy $0.20(3)\mHa$ lower than the others.
+Neither the VMC energy nor the mixing coefficient of the $2p^2$ configurations
+shows this. The mixing coefficient is not identifiable from the optimisation,
+and its gauge-invariant version does not order nodes whose radial functions
+differ. The $3d^2$ configurations and a one-body Jastrow term do not change
+the node measurably.
+
+Section~\ref{sec:wavefunction} defines the trial functions.
+Section~\ref{sec:nodes} derives the structure of the nodal surface.
+Section~\ref{sec:methods} describes the VMC and FN-DMC calculations.
+Section~\ref{sec:results} presents the results, Sec.~\ref{sec:discussion}
+discusses them, and Sec.~\ref{sec:limitations} states the limitations of the
+study.
+
+
+% ============================================================================
+\section{Trial wave functions}
+\label{sec:wavefunction}
+% ============================================================================
+
+\subsection{Hamiltonian and antisymmetry}
+
+In Hartree atomic units the Hamiltonian of the beryllium atom with a fixed
+nucleus of charge $Z = 4$ is
+\begin{equation}
+    \hat{H} = -\frac{1}{2}\sum_{i=0}^{3} \nabla_i^2
+              - \sum_{i=0}^{3} \frac{Z}{r_i}
+              + \sum_{0\le i<j\le 3} \frac{1}{r_{ij}} ,
+    \label{eq:hamiltonian}
+\end{equation}
+with $r_i = |\mathbf{r}_i|$ and $r_{ij} = |\mathbf{r}_i - \mathbf{r}_j|$.
+$\hat H$ does not act on spin. We fix $S_z = 0$, with electrons $0, 1$ of
+spin up and $2, 3$ of spin down. For two spatial orbitals $\phi_a$, $\phi_b$
+the determinant part is the product of two $2\times2$ determinants,
+\begin{equation}
+    D[\phi_a, \phi_b] = \det M_\uparrow \, \det M_\downarrow ,
+    \label{eq:det_product}
+\end{equation}
+with $M_\uparrow = \bigl(\phi_k(\mathbf{r}_i)\bigr)$ for $i \in \{0, 1\}$ and
+$M_\downarrow = \bigl(\phi_k(\mathbf{r}_i)\bigr)$ for $i \in \{2, 3\}$,
+$k \in \{a, b\}$.
+It changes sign under the exchange of two electrons of the same spin. Of the
+six electron pairs, two have parallel spins, $(0,1)$ and $(2,3)$, and four
+antiparallel spins.
+
+\subsection{Orbitals}
+\label{ssec:orbitals}
+
+When an electron approaches the nucleus, $-Z/r_i$ diverges. A finite local
+energy requires, for an $s$ orbital, the electron-nucleus cusp
+condition~\cite{kato1957}
+\begin{equation}
+    \left. \frac{\phi'(r)}{\phi(r)} \right|_{r\to 0} = -Z .
+    \label{eq:en_cusp}
+\end{equation}
+We impose it exactly. For $\phi_{1s} \propto e^{-\alpha_{1s} r}$ it gives
+$\alpha_{1s} = Z$, which we keep fixed. For
+$\phi_{2s} \propto (r - c)\, e^{-\alpha_{2s} r}$ one has $\phi(0) = -c$ and
+$\phi'(0) = 1 + \alpha_{2s} c$, so Eq.~\eqref{eq:en_cusp} fixes the position of
+the radial node,
+\begin{equation}
+    c = \frac{1}{Z - \alpha_{2s}} .
+    \label{eq:c_from_cusp}
+\end{equation}
+$c$ is recomputed from $\alpha_{2s}$ at every evaluation. The $2p$ and $3d$
+orbitals vanish at the nucleus and carry no cusp condition.
+
+Each orbital is multiplied by a radial modulation built on the coordinate
+\begin{equation}
+    t(r) = \frac{r^2}{1+r} , \qquad t(0) = 0 , \quad t'(0) = 0 .
+    \label{eq:t_coordinate}
+\end{equation}
+The orbitals are
+\begin{align}
+    \phi_{1s}(r)  &= e^{-Z r}\, m_{1s}(r) ,
+    \label{eq:phi1s} \\
+    \phi_{2s}(r)  &= (r - c)\, e^{-\alpha_{2s} r}\, m_{2s}(r) ,
+    \label{eq:phi2s} \\
+    \phi_{2p_k}(\mathbf{r}) &= x_k\, e^{-\alpha_{2p} r}\, m_{2p}(r) ,
+    \qquad k \in \{x, y, z\} ,
+    \label{eq:phi2p}
+\end{align}
+and, for the $3d$ shell, the five components of
+$T(\mathbf{r})\, e^{-\alpha_{3d} r}\, m_{3d}(r)$, with
+$T_{ab}(\mathbf{r}) = x_a x_b - \delta_{ab} r^2/3$. The modulation is
+\begin{equation}
+    m_{nl}(r) = 1 + c^{(1)}_{nl}\, t(r) + c^{(2)}_{nl}\, t(r)^2 .
+    \label{eq:modulation}
+\end{equation}
+Since $t(0) = t'(0) = 0$, $m_{nl}$ has unit value and zero slope at the
+nucleus, and Eq.~\eqref{eq:en_cusp} holds for any value of the coefficients.
+The coefficients are bounded, $c^{(1)} \in [-0.15, 2.5]$ and
+$c^{(2)} \in [-0.15, 0.8]$, and the exponents are bounded,
+$\alpha_{2s}, \alpha_{2p} \in [0.3, 3]$ and $\alpha_{3d} \in [0.3, 5]$. A
+parameter that reaches a bound has zero gradient and stays there; we report
+which parameters do.
+
+\subsection{Determinant part}
+\label{ssec:determinant}
+
+The single-determinant trial functions use $D[\phi_{1s}, \phi_{2s}]$, with
+linear modulations, $c^{(2)}_{1s} = c^{(2)}_{2s} = 0$, and three variational
+parameters, $\alpha_{2s}$, $c^{(1)}_{1s}$ and $c^{(1)}_{2s}$.
+
+The multi-configuration trial functions use
+\begin{equation}
+\begin{aligned}
+    D_{\mathrm{CAS}} = {} & D[\phi_{1s}, \phi_{2s}]
+    + c_p \sum_{k} D[\phi_{1s}, \phi_{2p_k}] \\
+    & + c_d \sum_{m} D[\phi_{1s}, \phi_{3d_m}] ,
+\end{aligned}
+    \label{eq:cas}
+\end{equation}
+with variational coefficients $c_p$ and $c_d$, both initialised at zero. The
+three $2p_k$ terms, and the five $3d_m$ terms, enter with equal weights, so
+that the state is a $^1S$ singlet. Two electrons in the $2s$ and $2p$
+orbitals can form $^1S^e$ only as $2s^2$ or $2p^2$, since $2s2p$ has odd
+parity. The first two terms of Eq.~\eqref{eq:cas} are therefore the complete
+active space CAS(2,4) for this state. The third term adds the $3d^2$
+configurations.
+
+\subsection{Jastrow factor}
+\label{ssec:jastrow}
+
+When two electrons coalesce, the cusp condition reads~\cite{kato1957}
+\begin{equation}
+    \left. \frac{\partial J}{\partial r_{ij}} \right|_{r_{ij}\to 0} = a_{ij} ,
+    \qquad
+    a_{ij} =
+    \begin{cases}
+        1/4 & \text{parallel spins,}\\
+        1/2 & \text{antiparallel spins.}
+    \end{cases}
+    \label{eq:ee_cusp}
+\end{equation}
+The two values differ because for parallel spins $D$ vanishes linearly at
+coalescence. A Pad\'e term satisfies Eq.~\eqref{eq:ee_cusp} for any range
+parameter,
+\begin{equation}
+    J_{\mathrm{P}} = \sum_{i<j} \frac{a_{ij}\, r_{ij}}{1 + b_{ij}\, r_{ij}} ,
+    \label{eq:pade}
+\end{equation}
+with $b_{ij} = b_\parallel$ or $b_\perp$ according to the spins, bounded to
+$[0.05, 10]$.
+
+The multi-configuration trial functions add a three-body term,
+\begin{equation}
+    J = J_{\mathrm{P}} + \sum_{i<j} g_\theta(\mathbf{u}_{ij})\,
+        e^{-0.3\,(t_i + t_j + t_{ij})} ,
+    \label{eq:three_body}
+\end{equation}
+with $t_i = t(r_i)$, $t_{ij} = t(r_{ij})$, and the features
+\begin{equation}
+    \mathbf{u}_{ij} = \bigl( t_i + t_j,\; t_i t_j,\; t_{ij},\; s_{ij},\;
+                      t_i t_j \cos\theta_{ij} \bigr) ,
+    \label{eq:features}
+\end{equation}
+where $s_{ij} = \pm1$ for parallel and antiparallel spins and $\theta_{ij}$ is
+the angle between $\mathbf{r}_i$ and $\mathbf{r}_j$. The features are
+symmetric under $i \leftrightarrow j$. Since they are built on $t$, the term
+does not change either cusp. $g_\theta$ is a multi-layer perceptron with two
+hidden layers of 16 units and the SiLU activation, $\sigma(x) = x/(1+e^{-x})$,
+whose second derivative does not vanish. The same weights are used for all
+six pairs.
+
+Some trial functions add a one-body term,
+\begin{equation}
+    J_1 = \sum_{i} w_\theta\bigl(\ln[1 + t(r_i)]\bigr) ,
+    \label{eq:one_body}
+\end{equation}
+with $w_\theta$ a perceptron with one hidden layer of 8 SiLU units. $J_1$ has
+zero slope at the nucleus, so Eq.~\eqref{eq:en_cusp} still holds. At large
+$r$ it grows at most as $\ln r$, so $e^{J_1}$ is a power of $r$ and $\Psi$
+stays normalisable.
+
+\subsection{The trial functions}
+\label{ssec:models}
+
+\paragraph{Single-determinant series.}
+The four trial functions share the determinant of Sec.~\ref{ssec:determinant}
+and differ only in $J$. \mS{0} has $J = 0$. \mS{1} has the Pad\'e term,
+Eq.~\eqref{eq:pade}. \mS{2} replaces it by a network
+$f_\theta\bigl(r_{ij}/(1 + r_{ij}),\, s_{ij}\bigr)$, summed over pairs, which
+can represent a cusp of any slope but must find the values of
+Eq.~\eqref{eq:ee_cusp} by optimisation. \mS{3} adds to the Pad\'e term a
+network acting on $t(r_{ij})/[1 + t(r_{ij})]$; since $t'(0) = 0$, this network
+cannot change the slope at coalescence, and the cusps are those of the Pad\'e
+term. The networks have two hidden layers of 16 units. The numbers of
+variational parameters are 3, 5, 340 and 342.
+
+\paragraph{Multi-configuration trial functions.}
+Table~\ref{tab:models} lists the ten trial functions built on
+Eq.~\eqref{eq:cas}. \mQ\ is the reference: all modulations are quadratic.
+\mQb\ differs from \mQ\ only in the seed of the optimisation. \mL\ has
+linear modulations, \mU\ none. \mQJ\ and \mUJ\ add the one-body term to \mQ\
+and \mU. \mFJ\ keeps $m_{1s} = 1$, modulates $\phi_{2s}$ and $\phi_{2p}$, and
+has the one-body term. \mD, \mDU\ and \mDJ\ add the $3d^2$ configurations to
+\mQ, \mU\ and \mQJ. A parameter that is not used is kept at its initial value,
+$c^{(1)} = c^{(2)} = 0$.
+
+\begin{table}[t]
+\caption{Multi-configuration trial functions. ``Modulation'' gives the form of
+$m_{nl}$, Eq.~\eqref{eq:modulation}; $J_1$ is the one-body term,
+Eq.~\eqref{eq:one_body}. The last column is the seed of the optimisation.}
+\label{tab:models}
+\centering
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lllccr}
+\hline\hline
+Label & Configurations & Modulation & $J_1$ & Param. & Seed \\
+\hline
+\mQ   & $2s^2, 2p^2$        & quadratic                & no  & 396 & 42 \\
+\mQb  & $2s^2, 2p^2$        & quadratic                & no  & 396 & 7  \\
+\mL   & $2s^2, 2p^2$        & linear                   & no  & 393 & 42 \\
+\mU   & $2s^2, 2p^2$        & none                     & no  & 390 & 42 \\
+\mQJ  & $2s^2, 2p^2$        & quadratic                & yes & 421 & 42 \\
+\mUJ  & $2s^2, 2p^2$        & none                     & yes & 415 & 42 \\
+\mFJ  & $2s^2, 2p^2$        & $2s$, $2p$; $m_{1s} = 1$ & yes & 419 & 42 \\
+\mD   & $2s^2, 2p^2, 3d^2$  & quadratic                & no  & 400 & 42 \\
+\mDU  & $2s^2, 2p^2, 3d^2$  & none                     & no  & 392 & 42 \\
+\mDJ  & $2s^2, 2p^2, 3d^2$  & quadratic                & yes & 425 & 42 \\
+\hline\hline
+\end{tabular}
+\end{table}
+
+
+% ============================================================================
+\section{Structure of the nodal surface}
+\label{sec:nodes}
+% ============================================================================
+
+The Jastrow factor is positive, so the nodal surface of $\Psi$ is the nodal
+surface of $D_{\mathrm{CAS}}$. In this section we write $D_{\mathrm{CAS}}$ as
+the product of a positive function and a function that carries the node. We
+then list the transformations of the orbitals that leave the node unchanged,
+and the quantities that do not depend on them.
+
+\subsection{Factorisation}
+\label{ssec:factorisation}
+
+For an orbital $\chi$, the spin-up determinant built from the pair
+$(\phi_{1s}, \chi)$ can be written as
+\begin{equation}
+    \phi_{1s}(r_0)\,\phi_{1s}(r_1)\,
+    \bigl[\tilde\chi(\mathbf{r}_1) - \tilde\chi(\mathbf{r}_0)\bigr] ,
+    \qquad
+    \tilde\chi = \frac{\chi}{\phi_{1s}} ,
+    \label{eq:det_ratio}
+\end{equation}
+and the spin-down determinant in the same way. We define two radial functions,
+\begin{align}
+    f(r) &= \frac{\phi_{2s}(r)}{\phi_{1s}(r)}
+          = (r - c)\, e^{(Z - \alpha_{2s}) r}\, q_{2s}(r) ,
+    \label{eq:f} \\
+    h(r) &= \frac{\phi_{2p_k}(\mathbf{r})}{x_k\, \phi_{1s}(r)}
+          = e^{(Z - \alpha_{2p}) r}\, q_{2p}(r) ,
+    \label{eq:h}
+\end{align}
+where $q_{nl} = m_{nl}/m_{1s}$. With $f_i = f(r_i)$ and
+$\mathbf{w}_i = h(r_i)\,\mathbf{r}_i$, Eq.~\eqref{eq:cas} at $c_d = 0$ becomes
+\begin{equation}
+    D_{\mathrm{CAS}} = \Phi\, N ,
+    \qquad
+    \Phi = \prod_{i=0}^{3} \phi_{1s}(r_i) ,
+    \label{eq:factorisation}
+\end{equation}
+\begin{equation}
+\begin{aligned}
+    N = {} & (f_1 - f_0)(f_3 - f_2) \\
+      & + c_p\, (\mathbf{w}_1 - \mathbf{w}_0) \cdot (\mathbf{w}_3 - \mathbf{w}_2) .
+\end{aligned}
+    \label{eq:N}
+\end{equation}
+The sum over the three $2p_k^2$ configurations gives the scalar product.
+$\Phi$ is positive as long as $m_{1s}$ has no zero; we checked this on a
+radial grid up to $15$ bohr for every multi-configuration trial function. The
+nodal surface is the set $N = 0$. The function $N$ depends on the electron
+positions only through $f$, $h$ and $c_p$, id est through two radial
+functions and one number.
+
+The $3d^2$ configurations add one term of the same form. Summing over the
+five configurations gives
+\begin{equation}
+\begin{aligned}
+    N = {} & (f_1 - f_0)(f_3 - f_2) \\
+      & + c_p\, (\mathbf{w}_1 - \mathbf{w}_0) \cdot (\mathbf{w}_3 - \mathbf{w}_2) \\
+      & + c_d\, (W_1 - W_0) : (W_3 - W_2) ,
+\end{aligned}
+    \label{eq:N_d}
+\end{equation}
+with $W_i = h_d(r_i)\, T(\mathbf{r}_i)$,
+$h_d(r) = e^{(Z - \alpha_{3d}) r}\, q_{3d}(r)$, and the colon denoting the full
+contraction of the two tensors. A constant factor from the normalisation of
+the $3d$ orbitals is absorbed in $c_d$.
+
+\subsection{Redundancies}
+\label{ssec:redundancies}
+
+Two sets of transformations leave the node unchanged.
+
+The first acts on $f$, $h$ and $c_p$:
+\begin{equation}
+    f \to a f + b , \qquad
+    h \to \mu h , \qquad
+    c_p \to c_p\, \frac{a^2}{\mu^2} ,
+    \label{eq:gauge_psi}
+\end{equation}
+with constants $a \neq 0$, $b$ and $\mu \neq 0$. Under
+Eq.~\eqref{eq:gauge_psi}, $N \to a^2 N$, so $\Psi$ changes by a constant
+factor. The constant $b$ corresponds to adding a multiple of $\phi_{1s}$ to
+$\phi_{2s}$. A determinant does not change when a multiple of one column is
+added to another,
+\begin{equation}
+    \det\bigl(\phi_{1s},\, \phi_{2s} + \lambda\phi_{1s}\bigr)
+    = \det\bigl(\phi_{1s},\, \phi_{2s}\bigr) ,
+    \label{eq:column_invariance}
+\end{equation}
+so the orthogonalisation of $\phi_{2s}$ against $\phi_{1s}$ has no effect on
+$\Psi$, and we omit it. The constants $a$ and $\mu$ are the scales of
+$\phi_{2s}$ and $\phi_{2p}$ relative to $\phi_{1s}$. In the parametrisation of
+Sec.~\ref{sec:wavefunction} these scales are not separate parameters, since
+$m_{nl}(0) = 1$; the radial parameters change them, over the region occupied
+by the electrons, together with the shape of the orbitals. The coefficient
+$c_p$ therefore has no meaning on its own: two trial functions with nearly the
+same node can have different $c_p$. The same holds for $c_d$, with
+$W \to \nu W$ and $c_d \to c_d\, a^2/\nu^2$.
+
+The second set acts on the modulations. If every $m_{nl}$ is multiplied by the
+same positive function $g(r)$, $D_{\mathrm{CAS}}$ is multiplied by
+$\prod_i g(r_i)$. This is a one-body Jastrow factor. The functions $f$ and $h$
+do not change, and neither does the node. The node depends on the modulations
+only through the ratios $q_{nl}$. Since $\alpha_{1s}$ is fixed at $Z$ by the
+cusp condition, $m_{1s}$ is the only radial freedom of the $1s$ orbital, and it
+enters the node only through these ratios.
+
+\subsection{Invariants}
+\label{ssec:invariants}
+
+For a radius $r_\star$ we define
+\begin{gather}
+    \hat f(r) = \frac{f(r) - f(0)}{f(r_\star) - f(0)} , \qquad
+    \hat h(r) = \frac{h(r)}{h(r_\star)} ,
+    \nonumber \\
+    \tilde c_p = c_p \left[ \frac{h(r_\star)}{f(r_\star) - f(0)} \right]^2 .
+    \label{eq:invariants}
+\end{gather}
+These quantities do not change under Eq.~\eqref{eq:gauge_psi}, and
+\begin{equation}
+\begin{aligned}
+    \frac{N}{\bigl[f(r_\star) - f(0)\bigr]^2} = {} &
+        (\hat f_1 - \hat f_0)(\hat f_3 - \hat f_2) \\
+        & + \tilde c_p\, (\hat{\mathbf{w}}_1 - \hat{\mathbf{w}}_0) \cdot
+                       (\hat{\mathbf{w}}_3 - \hat{\mathbf{w}}_2) ,
+\end{aligned}
+    \label{eq:N_hat}
+\end{equation}
+with $\hat{\mathbf{w}}_i = \hat h(r_i)\, \mathbf{r}_i$. The triple
+$(\hat f, \hat h, \tilde c_p)$ fixes the node. The number $\tilde c_p$ alone
+does not: trial functions with different $\hat f$ or $\hat h$ have different
+nodes at equal $\tilde c_p$, and the value of $\tilde c_p$ depends on
+$r_\star$. A comparison of $\tilde c_p$ between trial functions is meaningful
+only when their $\hat f$ and $\hat h$ are close over the region occupied by
+the electrons.
+
+To measure how close they are, we match each trial function to a reference
+$R$. With $g = f - f(0)$ and a radial weight $\rho(r)$, the constants
+\begin{gather}
+    a_\star = \arg\min_a \int \! dr\, \rho\,
+              \frac{(a g - g_R)^2}{g_R^2} ,
+    \nonumber \\
+    \mu_\star = \arg\min_\mu \int \! dr\, \rho\,
+              \frac{(\mu h - h_R)^2}{h_R^2}
+    \label{eq:match}
+\end{gather}
+bring $f$ and $h$ closest to those of $R$. The matched coefficient
+$\tilde c_p^{R} = c_p\, a_\star^2/\mu_\star^2$ is invariant under
+Eq.~\eqref{eq:gauge_psi} and has no free radius. The relative residuals of the
+two fits, $\epsilon_f$ and $\epsilon_h$, measure how far the radial functions
+of the trial function are from those of $R$.
+
+We also use the weight of each configuration channel,
+\begin{equation}
+    w_l = \frac{\int \! d\mathbf{R}\; e^{2J}\, \Phi^2\, (c_l\, T_l)^2}
+               {\int \! d\mathbf{R}\; e^{2J}\, \Phi^2\, \sum_{l'} (c_{l'}\, T_{l'})^2} ,
+    \qquad l \in \{s, p, d\} ,
+    \label{eq:weights}
+\end{equation}
+where $T_s$, $T_p$ and $T_d$ are the three products in Eq.~\eqref{eq:N_d} and
+$c_s = 1$. The integrand of the denominator has no node, so $w_l$ is sampled
+without difficulty. The weights do not change under
+Eq.~\eqref{eq:gauge_psi}, since every channel scales by $a^2$. They depend on
+the positive factor $e^{J}\Phi$, which the node does not fix: two trial
+functions with the same node can have different $w_l$. The weights describe
+the trial function, not the node.
+
+\subsection{The limit $c_p = 0$}
+\label{ssec:hf_limit}
+
+At $c_p = c_d = 0$, $N = (f_1 - f_0)(f_3 - f_2)$. If $f$ is strictly monotonic
+in $r$, $N$ vanishes exactly when $r_0 = r_1$ or $r_2 = r_3$. The node is then
+\begin{equation}
+    \{ r_0 = r_1 \} \cup \{ r_2 = r_3 \} ,
+    \label{eq:hf_node}
+\end{equation}
+the node of the $1s^2 2s^2$ determinant~\cite{bressanini_nodes}, whatever the
+radial parameters. We checked that $f$ is monotonic for every
+multi-configuration trial function.
+% TODO: verify monotonicity of f for the single-determinant series S0--S3.
+The four trial functions of the single-determinant series therefore share one
+node, and their energies differ only through the positive factor.
+
+\subsection{Sign disagreement as a probe of the node}
+\label{ssec:sign_probe}
+
+A direct comparison of two nodal surfaces $a$ and $b$ is the probability that
+the two trial functions have opposite signs,
+\begin{equation}
+    \varphi_{ab} = P_{|\Psi_a|^2}\bigl(\operatorname{sign}\Psi_a
+                   \neq \operatorname{sign}\Psi_b\bigr) ,
+    \label{eq:phi_ab}
+\end{equation}
+sampled from $|\Psi_a|^2$. This probe is weak. Near the node of $\Psi_a$,
+$|\Psi_a|^2 \approx |\nabla\Psi_a|^2 d^2$, with $d$ the distance from the node.
+If the node of $\Psi_b$ is displaced by $\delta(s)$ at the point $s$ of the
+surface, the region between the two nodes carries the weight
+\begin{equation}
+    \varphi_{ab} \approx
+    \frac{1}{3}\, \frac{\oint dS\; |\nabla\Psi_a|^2\, \delta^3}
+                       {\int d\mathbf{R}\; |\Psi_a|^2} .
+    \label{eq:phi_scaling}
+\end{equation}
+The probe is of third order in $\delta$. The fixed-node energy changes to
+first order in $\delta$ for two generic nodes, and to second order about the
+exact node. A sample without sign disagreements bounds $\varphi_{ab}$, but it
+does not bound the difference of the fixed-node energies.
+
+
+% ============================================================================
+\section{Methods}
+\label{sec:methods}
+% ============================================================================
+
+\subsection{Variational Monte Carlo}
+\label{ssec:vmc_method}
+
+We represent the trial function by $L = \ln|\Psi|$. The local energy is
+\begin{equation}
+    E_L = -\frac{1}{2}\bigl(\nabla^2 L + |\nabla L|^2\bigr)
+          - \sum_i \frac{Z}{r_i} + \sum_{i<j} \frac{1}{r_{ij}} ,
+    \label{eq:eloc}
+\end{equation}
+with the derivatives taken over the twelve coordinates by automatic
+differentiation. Configurations are sampled from $|\Psi|^2$ with $4000$
+Metropolis walkers. Each move displaces one electron by a Gaussian step; a
+sweep moves the four electrons in turn. Single-electron moves are used
+because the $1s$ and valence electrons have different length scales. The step
+is adapted to an acceptance of about $55\%$.
+
+The parameters are optimised by stochastic reconfiguration
+(SR)~\cite{sorella1998}. With the scores
+$O_k = \partial_{\theta_k} \ln|\Psi|$, the gradient of the energy and the
+metric are
+\begin{align}
+    g_k &= 2\, \bigl\langle (O_k - \langle O_k\rangle)
+                           (E_L - \langle E_L\rangle) \bigr\rangle ,
+    \label{eq:gradient} \\
+    S_{kl} &= \bigl\langle (O_k - \langle O_k\rangle)
+                          (O_l - \langle O_l\rangle) \bigr\rangle .
+    \label{eq:s_matrix}
+\end{align}
+The update is $\Delta\theta = -\eta\, (S + \gamma\,\mathrm{diag}\,S
++ 10^{-8})^{-1} g$, with $\gamma = 5\times10^{-3}$. The damping is relative
+to the diagonal of $S$ because orbital parameters and network weights have
+different scales. The norm of $\Delta\theta$ is then limited to
+$\Delta_{\max}$. The learning rate and the trust radius start at
+$\eta_0 = 0.1$ and $\Delta_0 = 0.3$ and decrease together as
+$0.05 + 0.475\,[1 + \cos(\pi n/n_{\max})]$, with $n_{\max} = 3500$ epochs of
+ten sweeps each. In the gradient only, the local energies are clipped to five
+mean absolute deviations about their median. After the optimisation the
+energy is accumulated over $200$ blocks separated by $150$ sweeps, and its
+error is the largest standard error over the levels of a blocking
+analysis~\cite{flyvbjerg1989}.
+
+The single-determinant series was computed with an earlier version of the
+code. It used the same sampler and SR update, with $\gamma$ between
+$10^{-3}$ and $5\times10^{-3}$, $300$ (\mS{0}), $600$ (\mS{1}) and $1500$
+(\mS{2}, \mS{3}) epochs, and $40$ blocks separated by $150$ sweeps.
+
+\subsection{Fixed-node diffusion Monte Carlo}
+\label{ssec:dmc_method}
+
+FN-DMC samples the mixed distribution $\Psi\,\Phi_{\mathrm{FN}}$ with walkers
+that drift, diffuse and carry weights~\cite{reynolds1982,foulkes2001}. A
+walker moves as
+$\mathbf{R}' = \mathbf{R} + \Delta\tau\, \bar{\mathbf{v}} + \bm{\eta}$, where
+$\bm\eta$ is Gaussian with variance $\Delta\tau$ per coordinate and
+$\bar{\mathbf{v}}$ is the drift $\nabla \ln|\Psi|$, reduced electron by
+electron by the factor $2/(1 + \sqrt{1 + 2 v^2 \Delta\tau})$ of
+Ref.~\onlinecite{umrigar1993}. The move is accepted with the Metropolis
+probability built on the drift-diffusion Green function. A move that changes
+the sign of $\Psi$ is rejected; this imposes the node. The weight is
+multiplied by
+$\exp\{-\Delta\tau\,[(E_L(\mathbf{R}) + E_L(\mathbf{R}'))/2 - E_T]\}$, with
+$E_L$ limited to $\pm 2/\sqrt{\Delta\tau}$ about a reference energy. Every
+five steps the weights are renormalised to a total of $N_w$, and the trial
+energy is set to $E_T = E_{\mathrm{run}} - \ln(W/N_w)/\tau_{\mathrm{fb}}$
+with $\tau_{\mathrm{fb}} = 1$. When the effective sample size falls below
+$0.95\, N_w$ the population is resampled with a comb. The energy is the
+weighted average of $E_L$.
+
+All lengths are given in imaginary time. The walkers start from the VMC
+walkers. After an equilibration of $\tau = 10$ the energy is accumulated in
+blocks of $\tau = 1$ over $\tau = 150$, or $\tau = 100$ for the trial functions
+with $J_1$. The time step is $\Delta\tau = 0.0025$ and $N_w = 4000$. Each
+production run has its own seed, except \mQ\ and \mU, which share one; the
+correlation of their blocks is $+0.04$, and we quote the error of their
+difference without correction. The error is obtained by blocking with a
+plateau test~\cite{flyvbjerg1989}. For every production run the plateau is
+reached at the first level: blocks of $\tau = 1$ are uncorrelated.
+
+\subsection{Nodal analysis}
+\label{ssec:node_method}
+
+The functions $f$, $h$, $\hat f$, $\hat h$ and the coefficients $\tilde c_p$
+and $\tilde c_p^{R}$ follow from the parameters without sampling. We take
+$r_\star = 2$ bohr unless stated otherwise. For Eq.~\eqref{eq:match} the
+reference is \mQ\ and $\rho$ is the one-body radial density of \mQ, the same
+for every trial function. Its 5\%, 50\% and 95\% quantiles are $0.14$, $0.95$
+and $3.9$ bohr. The weights $w_l$ and the probabilities $\varphi_{ab}$ are
+sampled with $4000$ Metropolis chains over $40$ blocks of $10$ sweeps; their
+errors are the spread of the chain means divided by $\sqrt{4000}$.
+
+\subsection{Tests}
+\label{ssec:tests}
+
+We tested the FN-DMC code on the hydrogen atom with the nodeless trial
+function $e^{-1.3 r}$, at four time steps from $0.02$ to $0.0025$. The linear
+extrapolation to $\Delta\tau = 0$ agrees with $-0.5\Eh$ within $0.4$ standard
+deviations. This test has no node, and does not test the fixed-node
+constraint. For \mQ\ we computed a time-step series, $\Delta\tau = 0.01$,
+$0.005$ and $0.0025$ with $\tau = 40$ each, and runs with $1000$, $2000$ and
+$4000$ walkers with $\tau = 60$ each.
+
+The code is written in JAX~\cite{jax2018} with Flax, in double precision. A
+production run of $\tau = 150$ with $4000$ walkers takes about $70$ minutes
+on a laptop CPU.
+
+
+% ============================================================================
+\section{Results}
+\label{sec:results}
+% ============================================================================
+
+\subsection{Single-determinant series}
+\label{ssec:series}
+
+Table~\ref{tab:series} gives the energies of the series. The four trial
+functions have the same node (Sec.~\ref{ssec:hf_limit}), so the differences
+come from the positive factor.
+% TODO: this relies on f being monotonic for S0--S3 (not yet checked).
+
+\begin{table*}[t]
+\caption{Single-determinant series. Variational energy, variance of the local
+energy, and fraction of the correlation energy, computed with
+$E_{\mathrm{HF}} = -14.573023\Eh$~\cite{todohflimit} and
+$E_{\mathrm{exact}} = -14.667356\Eh$~\cite{pachucki2006}. Bottom: slopes of
+$J$ at coalescence compared with Eq.~\eqref{eq:ee_cusp}.}
+\label{tab:series}
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccc}
+\hline\hline
+ & \mS{0} & \mS{1} & \mS{2} & \mS{3} \\
+\hline
+Parameters             & 3 & 5 & 340 & 342 \\
+$E$ ($E_h$)            & $-14.5696(45)$ & $-14.6232(11)$
+                       & $-14.6329(11)$ & $-14.6331(12)$ \\
+$\mathrm{Var}(E_L)$    & 3.208 & 0.256 & 0.246 & 0.250 \\
+Correlation            & $-3.6\%$ & $53.2\%$ & $63.5\%$ & $63.7\%$ \\
+\hline
+$\partial J/\partial r_{ij}|_0$, parallel ($1/4$)
+                       & -- & 0.2500 & 0.4529 & 0.2500 \\
+$\partial J/\partial r_{ij}|_0$, antiparallel ($1/2$)
+                       & -- & 0.5000 & 0.4964 & 0.5000 \\
+\hline\hline
+\end{tabular}
+\end{table*}
+
+\mS{0} lies $3.4\mHa$ above the Hartree-Fock limit. Its determinant has three
+radial parameters, and the Hartree-Fock limit is a lower bound for it. The
+Pad\'e term, \mS{1}, lowers the energy by $53.6\mHa$ and the variance by a
+factor of $12.5$. The network of \mS{2} lowers the energy by a further
+$9.7\mHa$ and the variance by $4\%$. Adding the exact cusps to the network,
+\mS{3}, changes the energy by $0.2(1.6)\mHa$.
+
+The network of \mS{2} reproduces the antiparallel-spin cusp to $0.7\%$ and
+gives the parallel-spin pairs a slope of $0.4529$ instead of $0.25$, an error
+of $81\%$. For parallel spins $D$ vanishes at coalescence, so the region
+$r_{ij} \to 0$ carries little weight for these pairs, and only two of the six
+pairs have parallel spins. The gradient of the energy along the parallel-spin
+slope is therefore small. \mS{3} returns the exact slopes to four decimals,
+as required by its construction.
+
+Figure~\ref{fig:jastrow} shows the optimised Jastrow factors. In \mS{1} the
+parallel-spin range parameter runs to the bound, $b_\parallel = 10$: the
+parallel-spin term becomes a constant, $a/b$, and is switched off. With the
+bound raised to $100$, $b_\parallel$ runs again to the bound and the energy
+rises to $-14.5787\Eh$. In \mS{3}, $b_\parallel = 0.283$, inside the interval.
+\mS{1} and \mS{3} have opposite parallel-spin correlation functions and the
+same energy within the error. In \mS{2} the network grows linearly at large
+$r_{ij}$, with slopes $0.088$ (antiparallel) and $0.07$ (parallel). For an
+electron far from the others this gives a factor of about $e^{0.25 r}$, which
+compensates part of the orbital decay; $\alpha_{2s}$ is $1.314$ in \mS{2}
+against $1.170$ in \mS{1}. The network does one-body work, and the network and
+$\alpha_{2s}$ move along a direction of nearly constant energy.
+
+\begin{figure*}[t]
+\centering
+\figfile{\textwidth}{comparison_jastrow.pdf}
+\caption{Optimised Jastrow exponents of \mS{1}, \mS{2} and \mS{3}, shifted to
+$J(0) = 0$. Solid lines: antiparallel pairs; dashed lines: parallel pairs.
+Shaded histogram: distribution of the sampled $r_{ij}$ (right axis). Right
+panel: the coalescence region, with the exact cusp slopes $1/4$ and $1/2$ as
+dotted lines.}
+\label{fig:jastrow}
+\end{figure*}
+
+\subsection{Multi-configuration trial functions: VMC}
+\label{ssec:vmc}
+
+Table~\ref{tab:vmc} gives the VMC results. The energies lie between
+$-14.66620\Eh$ (\mU) and $-14.66697\Eh$ (\mDJ). The errors are
+$0.11$--$0.17\mHa$, and about half of the differences between trial
+functions are below $1.5$ standard deviations. The variance of the local energy separates them
+more: $0.0086$ for \mQJ\ and \mDJ, $0.0095$ for \mQ, $0.0131$ for \mU.
+
+\begin{table}[t]
+\caption{VMC energies of the multi-configuration trial functions, variance of
+the local energy, fraction of the correlation energy, and mixing coefficient
+$c_p$.}
+\label{tab:vmc}
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccc}
+\hline\hline
+ & $E_{\mathrm{VMC}}$ ($E_h$) & $\mathrm{Var}(E_L)$ & Corr. (\%) & $c_p$ \\
+\hline
+\mQ   & $-14.66677(12)$ & 0.0095 & 99.38(13) & $-0.2200$ \\
+\mQb  & $-14.66669(17)$ & 0.0109 & 99.29(18) & $-0.2226$ \\
+\mL   & $-14.66660(12)$ & 0.0113 & 99.19(13) & $-0.1984$ \\
+\mU   & $-14.66620(13)$ & 0.0131 & 98.77(14) & $-0.2437$ \\
+\mQJ  & $-14.66689(11)$ & 0.0086 & 99.51(11) & $-0.2184$ \\
+\mUJ  & $-14.66633(14)$ & 0.0122 & 98.91(15) & $-0.2372$ \\
+\mFJ  & $-14.66676(14)$ & 0.0115 & 99.36(14) & $-0.1904$ \\
+\mD   & $-14.66663(12)$ & 0.0107 & 99.23(13) & $-0.2387$ \\
+\mDU  & $-14.66647(13)$ & 0.0134 & 99.06(14) & $-0.2569$ \\
+\mDJ  & $-14.66697(12)$ & 0.0086 & 99.59(13) & $-0.2376$ \\
+\hline\hline
+\end{tabular}
+\end{table}
+
+Some coefficients end at a bound: $c^{(2)}_{1s} = 0.8$ in \mQJ\ and \mDJ, both
+coefficients of $m_{3d}$ in \mD\ and \mDJ, and $c^{(1)}_{2s} = -0.15$ in \mFJ.
+For these trial functions the results depend on the bounds. In every trial
+function $m_{1s}$ has no zero and $f$ is monotonic. Equation~\eqref{eq:N_d}
+reproduces the directly computed determinant part to a relative accuracy of
+$10^{-14}$.
+
+In \mQJ\ the one-body term is negative: $w_\theta(r) - w_\theta(0) = -0.55$,
+$-1.10$ and $-1.79$ at $r = 1$, $2$ and $4$ bohr. In the same trial function
+$m_{1s}$ grows more than in \mQ: $c^{(1)}_{1s} = 1.55$ against $1.30$, and
+$c^{(2)}_{1s}$ reaches its bound. At $r = 4$ bohr, $\ln m_{1s} = 2.65$. The
+one-body term removes part of the one-body factor that $m_{1s}$ carries. In
+\mUJ, where the orbitals are not modulated, the one-body term is positive
+($+0.51$ at $r = 4$ bohr) and $\alpha_{2p}$ increases from $1.10$ to $1.21$.
+
+\subsection{Error budget}
+\label{ssec:budget}
+
+Table~\ref{tab:dmc} gives the FN-DMC energies. Figure~\ref{fig:budget}
+compares $E_{\mathrm{VMC}}$ and $E_{\mathrm{FN}}$ for \mQ, \mL\ and \mU. In
+every trial function $E_{\mathrm{VMC}} - E_{\mathrm{FN}}$ is larger than
+$E_{\mathrm{FN}} - E_{\mathrm{exact}}$. For \mQ, \mQb, \mQJ\ and \mDJ\ the
+positive factor accounts for $60$--$81\%$ of the VMC error, for \mFJ\ for
+$52\%$ and for \mD\ for $98\%$. These fractions have errors of about $20$
+percentage points.
+
+\begin{table}[t]
+\caption{FN-DMC energies at $\Delta\tau = 0.0025$, distance from the exact
+energy, difference from the VMC energy, and fraction of the VMC error due to
+the positive factor, $(E_{\mathrm{VMC}} - E_{\mathrm{FN}})/
+(E_{\mathrm{VMC}} - E_{\mathrm{exact}})$. Energy differences in mHa.}
+\label{tab:dmc}
+\centering
+\small
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{lcccc}
+\hline\hline
+ & $E_{\mathrm{FN}}$ ($E_h$) & $E_{\mathrm{FN}} - E_{\mathrm{ex}}$
+ & $E_{\mathrm{VMC}} - E_{\mathrm{FN}}$ & Fraction \\
+\hline
+\mQ   & $-14.667237(37)$ & $+0.119(37)$ & $0.46(13)$ & 80\% \\
+\mQb  & $-14.667204(33)$ & $+0.152(33)$ & $0.52(17)$ & 77\% \\
+\mL   & $-14.667169(35)$ & $+0.187(35)$ & $0.57(13)$ & 75\% \\
+\mU   & $-14.666973(43)$ & $+0.383(43)$ & $0.78(14)$ & 67\% \\
+\mQJ  & $-14.667269(41)$ & $+0.087(41)$ & $0.38(11)$ & 81\% \\
+\mUJ  & $-14.667045(58)$ & $+0.311(58)$ & $0.71(15)$ & 70\% \\
+\mFJ  & $-14.667066(49)$ & $+0.290(49)$ & $0.31(15)$ & 52\% \\
+\mD   & $-14.667340(69)$ & $+0.016(69)$ & $0.71(14)$ & 98\% \\
+\mDJ  & $-14.667201(35)$ & $+0.155(35)$ & $0.23(13)$ & 60\% \\
+\hline\hline
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\figfile{\columnwidth}{fig_error_budget_quadA.pdf}\\[2pt]
+\figfile{\columnwidth}{fig_error_budget_lin.pdf}\\[2pt]
+\figfile{\columnwidth}{fig_error_budget_nomod.pdf}
+\caption{VMC and FN-DMC energies relative to the exact energy for \mQ\ (top),
+\mL\ (middle) and \mU\ (bottom). The arrow is
+$E_{\mathrm{VMC}} - E_{\mathrm{FN}}$, the error of the positive factor.}
+\label{fig:budget}
+\end{figure}
+
+\subsection{Radial modulation and the node}
+\label{ssec:modulation}
+
+The fixed-node energy of \mQ\ is lower than that of \mU\ by $0.264(57)\mHa$,
+$4.7$ standard deviations. The radial modulation changes the node. In VMC the
+difference is $0.577(179)\mHa$. Of this, $0.264\mHa$ comes from the node and
+$0.313(188)\mHa$ from the positive factor. The VMC energy alone does not
+separate the two parts.
+
+\mL\ lies between the two: $E_{\mathrm{FN}}(\mL) - E_{\mathrm{FN}}(\mU) =
+-0.196(55)\mHa$ and $E_{\mathrm{FN}}(\mL) - E_{\mathrm{FN}}(\mQ) =
++0.068(51)\mHa$. \mQb, which differs from \mQ\ only in the seed of the
+optimisation, gives $E_{\mathrm{FN}}(\mQb) - E_{\mathrm{FN}}(\mQ) =
++0.033(50)\mHa$. A second pair that differs in an element without effect on
+the node, \mUJ\ and \mU\ (Sec.~\ref{ssec:dchannel}), gives $-0.072(72)\mHa$.
+In both cases the spread is consistent with the statistical error.
+
+\subsection{The node and the $1s$ orbital}
+\label{ssec:onebody}
+
+Table~\ref{tab:groups} divides the nine trial functions with FN-DMC energies
+by construction: $m_{1s}$ optimised or $m_{1s} = 1$. Within each group the
+fixed-node energies agree within their errors. The trial functions with
+$m_{1s} = 1$ lie $0.198(32)\mHa$ higher. Figure~\ref{fig:groups} shows the
+nine energies.
+
+\begin{table}[t]
+\caption{Fixed-node energies grouped by the treatment of the $1s$ orbital.
+Weighted means, in mHa above the exact energy, and $\chi^2$ about the mean.}
+\label{tab:groups}
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llcc}
+\hline\hline
+Group & Trial functions & $E_{\mathrm{FN}} - E_{\mathrm{ex}}$ & $\chi^2$/dof \\
+\hline
+$m_{1s}$ optimised & \parbox[t]{2.6cm}{\raggedright \mQ, \mQb, \mL, \mQJ, \mD, \mDJ} & $+0.137(16)$ & 7.3/5 \\
+$m_{1s} = 1$       & \mU, \mUJ, \mFJ               & $+0.335(28)$ & 2.3/2 \\
+Difference         &                                & $0.198(32)$  &       \\
+\hline\hline
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\figfile{\columnwidth}{fig_node_groups.pdf}
+% TODO: figure to be produced. E_FN - E_exact of the nine trial functions,
+% grouped by m_1s optimised / m_1s = 1, with the two weighted means as bands.
+\caption{Fixed-node energies of the nine trial functions relative to the exact
+energy, grouped by the treatment of the $1s$ orbital. Bands: weighted means of
+Table~\ref{tab:groups}.}
+\label{fig:groups}
+\end{figure}
+
+The groups also differ in other elements: \mU\ and \mUJ\ have no modulation
+of $\phi_{2s}$ and $\phi_{2p}$. Three trial functions with the same Jastrow
+factor isolate the $1s$ orbital. From \mUJ\ to \mFJ, $\phi_{2s}$ and
+$\phi_{2p}$ are modulated and $\phi_{1s}$ is not; the fixed-node energy
+changes by $-0.02(8)\mHa$. From \mFJ\ to \mQJ, $m_{1s}$ is added; the
+fixed-node energy changes by $-0.20(6)\mHa$, $3.2$ standard deviations. In
+VMC, \mQJ\ and \mFJ\ differ by $0.14(17)\mHa$. Prima facie the two trial
+functions are equivalent.
+
+The modulation of the $1s$ orbital acts on the node through the ratios
+$q_{nl}$ of Sec.~\ref{ssec:redundancies}. With $\alpha_{1s}$ fixed at $Z = 4$
+by the cusp condition, $m_{1s}$ is the only way to change the shape of
+$\phi_{1s}$. In \mQ\ and \mQJ\ it grows with $r$ and makes $\phi_{1s}$ more
+diffuse than $e^{-Zr}$. Since $f = \phi_{2s}/\phi_{1s}$ and
+$h = \phi_{2p_k}/(x_k\phi_{1s})$, the shape of $\phi_{1s}$ enters the node.
+In \mFJ\ the modulations of $\phi_{2s}$ and $\phi_{2p}$ cannot replace it:
+$c^{(1)}_{2s}$ ends at its lower bound. In \mQJ\ the coefficient
+$c^{(2)}_{1s}$ is at its upper bound, so the size of the effect may depend on
+the bound.
+
+\subsection{Redundancies in the optimised parameters}
+\label{ssec:redundancies_results}
+
+Table~\ref{tab:nodal} gives, for every trial function, $c_p$, $\tilde c_p$ at
+$r_\star = 2$ bohr, the matched coefficient $\tilde c_p^{R}$ with \mQ\ as
+reference, and the residuals of the match. Figure~\ref{fig:radial} shows the
+modulations, the ratios $q_{nl}$ and the functions $\hat f$, $\hat h$ for \mQ,
+\mQb, \mL\ and \mU.
+
+\begin{table}[t]
+\caption{Mixing coefficient $c_p$, invariant $\tilde c_p$ at
+$r_\star = 2$ bohr, matched coefficient $\tilde c_p^{R}$
+(Eq.~\eqref{eq:match}, reference \mQ), and relative residuals of the match.}
+\label{tab:nodal}
+\centering
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lccccc}
+\hline\hline
+ & $c_p$ & $\tilde c_p$ & $\tilde c_p^{R}$ & $\epsilon_f$ & $\epsilon_h$ \\
+\hline
+\mQ   & $-0.2200$ & $-0.1078$ & $-0.2200$ & 0     & 0     \\
+\mQb  & $-0.2226$ & $-0.1084$ & $-0.2211$ & 0.024 & 0.024 \\
+\mL   & $-0.1984$ & $-0.1060$ & $-0.2115$ & 0.156 & 0.168 \\
+\mU   & $-0.2437$ & $-0.0998$ & $-0.1936$ & 0.639 & 0.607 \\
+\mQJ  & $-0.2184$ & $-0.1081$ & $-0.2121$ & 0.043 & 0.030 \\
+\mUJ  & $-0.2372$ & $-0.1001$ & $-0.1947$ & 0.547 & 0.491 \\
+\mFJ  & $-0.1904$ & $-0.1058$ & $-0.2174$ & 0.483 & 0.460 \\
+\mD   & $-0.2387$ & $-0.1091$ & $-0.2301$ & 0.062 & 0.071 \\
+\mDU  & $-0.2569$ & $-0.1015$ & $-0.1888$ & 0.629 & 0.586 \\
+\mDJ  & $-0.2376$ & $-0.1080$ & $-0.2212$ & 0.063 & 0.071 \\
+\hline\hline
+\end{tabular}
+\end{table}
+
+\begin{figure*}[t]
+\centering
+\figfile{\textwidth}{fig_gauge_radial.pdf}
+\caption{Radial functions of \mQ, \mQb, \mL\ and \mU. (a)--(c) Modulations
+$m_{1s}$, $m_{2s}$, $m_{2p}$. (d), (e) Ratios $q_{2s}$ and $q_{2p}$, which
+enter the node. (f) $\hat f$ and $\hat h$ at $r_\star = 2$ bohr, as ratios to
+those of \mQ; by construction the ratios equal one at $r_\star$. Shaded band:
+central 90\% of the sampled electron radii.}
+\label{fig:radial}
+\end{figure*}
+
+Among the nine trial functions with FN-DMC energies the raw coefficient $c_p$
+ranges from $-0.190$ to $-0.244$. It does not order the fixed-node energies: a linear fit of $E_{\mathrm{FN}}$ in $|c_p|$ gives
+$\chi^2 = 46.8$ for $7$ degrees of freedom. The five trial functions whose
+radial functions lie within $7.1\%$ of those of \mQ\ (\mQ, \mQb, \mQJ, \mD,
+\mDJ) have $c_p$ between $-0.218$ and $-0.239$ and fixed-node energies that
+agree within their errors ($\chi^2 = 4.8/4$). For these trial functions the
+spread of $\tilde c_p^{R}$ is $8\%$.
+
+The trial functions with $m_{1s} = 1$ have radial functions $46$--$64\%$ away
+from those of \mQ. For them a single number cannot describe the node.
+Table~\ref{tab:rstar} shows the consequence: a linear fit of
+$E_{\mathrm{FN}}$ in $|\tilde c_p|$ over the nine trial functions has a slope
+that changes sign with $r_\star$. At small $r_\star$ the trial functions with
+$m_{1s} = 1$ have the largest $|\tilde c_p|$, at large $r_\star$ the smallest.
+The fit separates the two groups of Table~\ref{tab:groups} in either
+direction. The matched coefficient gives $\chi^2 = 17.8/7$, and no slope
+within the five modulated trial functions without $3d^2$ configurations.
+
+\begin{table}[t]
+\caption{Linear fit of $E_{\mathrm{FN}} - E_{\mathrm{ex}}$ in
+$|\tilde c_p|$ for the nine trial functions, at several gauge-fixing radii and
+with the matched coefficient. Slope in units of its standard error.}
+\label{tab:rstar}
+\centering
+\small
+\begin{tabular}{lcc}
+\hline\hline
+Gauge & Slope ($\sigma$) & $\chi^2$/dof \\
+\hline
+$r_\star = 0.5$ bohr & $+5.7$ & 14.1/7 \\
+$r_\star = 1.0$ bohr & $+5.3$ & 18.9/7 \\
+$r_\star = 1.5$ bohr & $-3.0$ & 37.9/7 \\
+$r_\star = 2.0$ bohr & $-6.2$ & 8.7/7  \\
+$r_\star = 3.0$ bohr & $-5.6$ & 16.4/7 \\
+Matched to \mQ       & $-5.4$ & 17.8/7 \\
+\hline\hline
+\end{tabular}
+\end{table}
+
+The coefficient of the $3d^2$ configurations behaves in the same way. From
+\mDU\ to \mD, $|c_d|$ decreases from $0.078$ to $0.016$, while the weight of
+the channel, Eq.~\eqref{eq:weights}, increases from $6.8\times10^{-5}$ to
+$1.05\times10^{-4}$. The change of $c_d$ comes from the scale of the $3d$
+orbital: in \mD, $\alpha_{3d} = 2.02$ and both coefficients of $m_{3d}$ are at
+their bounds.
+
+The VMC energy does not order the fixed-node energies either. The rank
+correlation of $E_{\mathrm{VMC}}$ and $E_{\mathrm{FN}}$ over the nine trial
+functions is $0.57$ ($p = 0.11$). For the variance of the local energy it is
+$0.81$ ($p = 0.008$).
+
+\subsection{The $3d^2$ configurations and the one-body term}
+\label{ssec:dchannel}
+
+Two pairs of trial functions differ only in the $3d^2$ configurations:
+$E_{\mathrm{FN}}(\mD) - E_{\mathrm{FN}}(\mQ) = -0.103(78)\mHa$ and
+$E_{\mathrm{FN}}(\mDJ) - E_{\mathrm{FN}}(\mQJ) = +0.068(54)\mHa$. The weighted
+mean is $+0.01(4)\mHa$. The $3d^2$ configurations do not change the
+fixed-node energy within $0.04\mHa$, in agreement with a channel weight of
+$10^{-4}$. \mD\ lies $1.8$ standard deviations below the mean of the other
+five trial functions with optimised $m_{1s}$. Its error is twice that of the
+other runs of the same length. The standard deviation of its block energies is $0.84\mHa$, against
+$0.35$--$0.46\mHa$ for \mQ, \mQb\ and \mDJ. Its excess kurtosis, $1.5$, lies
+within the range of the other runs ($-0.1$ to $2.8$), so the width does not
+come from a few outlying blocks. The blocks are uncorrelated, and the error is
+the standard error of the block mean.
+
+Three pairs differ only in the one-body term:
+$E_{\mathrm{FN}}(\mQJ) - E_{\mathrm{FN}}(\mQ) = -0.032(56)\mHa$,
+$E_{\mathrm{FN}}(\mUJ) - E_{\mathrm{FN}}(\mU) = -0.072(72)\mHa$ and
+$E_{\mathrm{FN}}(\mDJ) - E_{\mathrm{FN}}(\mD) = +0.139(77)\mHa$. The weighted
+mean is $0.00(4)\mHa$. In VMC the one-body term lowers the energy of \mU\ by
+$0.14(19)\mHa$ and that of \mQ\ by $0.12(16)\mHa$. It lowers the variance of
+\mQ\ and \mU\ by $7$--$10\%$ and that of \mD\ by $20\%$.
+
+\subsection{Sign disagreement}
+\label{ssec:sign_results}
+
+Among \mQ, \mQb, \mL\ and \mU, no pair has a sign disagreement in the sampled
+configurations. With $4000$ independent chains this gives
+$\varphi_{ab} < 7.5\times10^{-4}$ at $95\%$ confidence. The fixed-node
+energies of \mQ\ and \mU\ differ by $0.264(57)\mHa$. Both facts follow from
+Eq.~\eqref{eq:phi_scaling}: the probe is of third order in the displacement of
+the node, the energy of first order.
+
+\subsection{Systematic errors}
+\label{ssec:systematics}
+
+Table~\ref{tab:timestep} and Fig.~\ref{fig:timestep} give the time-step series
+of \mQ. The data do not fix the form of the time-step error. A linear and a
+quadratic fit extrapolate to $+0.19$ and $+0.15\mHa$ above the exact energy;
+a constant fits the data with $\chi^2 = 6.8/3$. The production value at
+$\Delta\tau = 0.0025$ is $+0.119(37)\mHa$. A linear or quadratic form places
+the error at $\Delta\tau = 0.0025$ between $-0.05$ and $-0.01\mHa$. We quote
+all fixed-node energies at $\Delta\tau = 0.0025$, with this range as a
+systematic uncertainty. The series exists only for \mQ; for the differences
+between trial functions we assume that the time-step error at
+$\Delta\tau = 0.0025$ is the same within this range. The fraction of rejected
+node crossings is $0.0169\%$, $0.0059\%$ and $0.0020\%$ at the three time
+steps, and $0.0020$--$0.0022\%$ in every production run.
+
+\begin{table}[t]
+\caption{Time-step series of \mQ\ (top) and fits to it (bottom).
+$E_{\mathrm{FN}} - E_{\mathrm{ex}}$ in mHa.}
+\label{tab:timestep}
+\centering
+\small
+\begin{tabular}{lcc}
+\hline\hline
+$\Delta\tau$ & $E_{\mathrm{FN}} - E_{\mathrm{ex}}$ & Crossings \\
+\hline
+$0.01$             & $-0.046(64)$ & $0.0169\%$ \\
+$0.005$            & $+0.154(63)$ & $0.0059\%$ \\
+$0.0025$           & $+0.152(65)$ & $0.0020\%$ \\
+$0.0025$, production & $+0.119(37)$ & $0.0020\%$ \\
+\hline
+Fit & Intercept & $\chi^2$/dof \\
+\hline
+Constant  & $+0.103(26)$ & 6.8/3 \\
+Linear    & $+0.193(48)$ & 1.7/2 \\
+Quadratic & $+0.150(33)$ & 1.0/2 \\
+\hline\hline
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\figfile{\columnwidth}{fig_dmc_timestep_quadA.pdf}
+% TODO: the current figure draws only the constant fit; add the linear and
+% quadratic fits before submission.
+\caption{Time-step series of \mQ. (a) $E_{\mathrm{FN}} - E_{\mathrm{exact}}$
+and fits. (b) Fraction of rejected node crossings, logarithmic scales.}
+\label{fig:timestep}
+\end{figure}
+
+With $1000$, $2000$ and $4000$ walkers the energies of \mQ\ are
+$-14.667378(107)$, $-14.667182(81)$ and $-14.667201(53)\Eh$. A constant fits
+them with $\chi^2 = 2.5/2$; a term in $1/N_w$ has a slope of
+$-0.21(16)\mHa$ at $N_w = 1000$. The population error at $N_w = 4000$ is
+below the statistical error.
+
+\subsection{Comparison with previous work}
+\label{ssec:literature}
+
+Table~\ref{tab:literature} compares our results with those of Seth
+\emph{et al.}~\cite{seth2011} and Morales \emph{et al.}~\cite{morales2012}.
+The VMC energy of \mDJ\ lies $0.22(12)\mHa$ above that of Seth \emph{et al.},
+who use a larger expansion and backflow, and agrees with that of Morales
+\emph{et al.}. The variance of \mDJ, $0.0086$, lies between the values of Seth
+\emph{et al.} without backflow, $0.0107$, and with backflow, $0.0053$. The
+fixed-node energy of the trial functions with optimised $m_{1s}$ lies
+$0.087(17)\mHa$ above that of Seth \emph{et al.} Our value is not
+extrapolated in $\Delta\tau$. The extrapolation would raise it by up to
+$0.05\mHa$.
+% TODO: verify every literature value against the papers.
+
+\begin{table}[t]
+\caption{Comparison with previous work. Energies in $E_h$.}
+\label{tab:literature}
+\centering
+\small
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{lcc}
+\hline\hline
+ & $E_{\mathrm{VMC}}$ & $E_{\mathrm{FN}}$ \\
+\hline
+This work, \mDJ              & $-14.66697(12)$ & $-14.667201(35)$ \\
+This work, mean, $m_{1s}$ opt. & --             & $-14.667219(16)$ \\
+Seth \emph{et al.}~\cite{seth2011}     & $-14.66719(1)$ & $-14.667306(7)$ \\
+Morales \emph{et al.}~\cite{morales2012} & $-14.66688(4)$ & -- \\
+Exact~\cite{pachucki2006}    & \multicolumn{2}{c}{$-14.667356$} \\
+\hline\hline
+\end{tabular}
+\end{table}
+
+
+% ============================================================================
+\section{Discussion}
+\label{sec:discussion}
+% ============================================================================
+
+The network learns the parts of the Jastrow factor to which the energy is
+sensitive. In the single-determinant series the network reproduces the antiparallel-spin cusp
+and not the parallel-spin cusp, because the energy depends on the first and
+hardly on the second. Imposing both cusps costs one change of variable and
+gives the same energy. In the multi-configuration trial functions the positive
+factor still carries most of the VMC error: $E_{\mathrm{VMC}} -
+E_{\mathrm{FN}}$ is $0.2$--$0.8\mHa$ against a fixed-node error of
+$0.02$--$0.38\mHa$.
+
+The Jastrow factor cannot learn the node, since $e^J > 0$. The node is fixed
+by the determinant part, and in the trial functions studied here by two
+radial functions and one number. The parameters of the determinant part,
+optimised together with the Jastrow factor, are not identifiable: $c_p$ and
+$c_d$ change with the scale of the orbitals, and a common radial factor of the
+orbitals is a one-body Jastrow factor. What changes the node is the shape of
+each orbital relative to the $1s$ orbital. In our parametrisation the cusp
+condition fixes the $1s$ exponent, and the modulation $m_{1s}$ is the radial
+freedom that the node needs.
+
+Neither the VMC energy nor the raw coefficients detect a change of the node.
+\mFJ\ and \mQJ\ have the same VMC energy within $0.14(17)\mHa$ and fixed-node
+energies $0.20(6)\mHa$ apart. A gauge-invariant coefficient detects the change
+only between trial functions with the same radial functions; across different
+radial functions its ordering depends on the choice of gauge. To compare nodes
+of different radial form we used FN-DMC. The variance of the local energy
+correlates with the fixed-node energy better than the VMC energy, but it also
+depends on the positive factor.
+
+
+% ============================================================================
+\section{Limitations and outlook}
+\label{sec:limitations}
+% ============================================================================
+
+The study treats one atom with a quasi-degenerate ground state. The effects on
+the node are $0.1$--$0.3\mHa$, a few standard deviations of our fixed-node
+energies. Only one pair of trial functions, \mQ\ and \mQb, differs only in the
+seed of the optimisation. The time-step series and the population test exist
+only for \mQ. The FN-DMC code was tested only on a nodeless system. Some
+coefficients of the best trial functions end at their bounds. The
+single-determinant series was computed with an earlier version of the code and
+a shorter protocol.
+
+The invariants of Sec.~\ref{sec:nodes} hold for the CAS(2,4) expansion with
+the orbitals of Sec.~\ref{sec:wavefunction}. A measure of the distance between
+two nodes that does not depend on a choice of gauge would allow nodes of
+different radial form to be compared without FN-DMC. A parametrisation of the
+ratios $q_{nl}$ instead of the modulations $m_{nl}$ would remove the
+redundancy of Sec.~\ref{ssec:redundancies} and the bounds that now limit the
+$1s$ orbital. The same analysis applies to other atoms with a
+$2s^2$--$2p^2$ near-degeneracy.
+
+
+% ============================================================================
+% BIBLIOGRAPHY: placeholders, to be completed and checked.
+% ============================================================================
+\begin{thebibliography}{99}
+
+\bibitem{carleo2017} TODO: G. Carleo and M. Troyer, Science (2017).
+\bibitem{pfau2020} TODO: D. Pfau \emph{et al.}, Phys. Rev. Res. (2020), FermiNet.
+\bibitem{hermann2020} TODO: J. Hermann, Z. Sch\"atzle and F. No\'e, Nat. Chem. (2020), PauliNet.
+\bibitem{reynolds1982} TODO: P. J. Reynolds \emph{et al.}, J. Chem. Phys. (1982).
+\bibitem{foulkes2001} TODO: W. M. C. Foulkes \emph{et al.}, Rev. Mod. Phys. (2001).
+\bibitem{todobehfnode} TODO: source for the fixed-node energy of Be with a single determinant.
+\bibitem{pachucki2006} TODO: K. Pachucki and J. Komasa, exact non-relativistic energy of Be.
+\bibitem{bressanini_nodes} TODO: D. Bressanini, D. M. Ceperley and P. J. Reynolds, nodes of Be.
+\bibitem{kato1957} TODO: T. Kato, Commun. Pure Appl. Math. (1957).
+\bibitem{sorella1998} TODO: S. Sorella, Phys. Rev. Lett. (1998).
+\bibitem{flyvbjerg1989} TODO: H. Flyvbjerg and H. G. Petersen, J. Chem. Phys. (1989).
+\bibitem{umrigar1993} TODO: C. J. Umrigar, M. P. Nightingale and K. J. Runge, J. Chem. Phys. (1993).
+\bibitem{jax2018} TODO: J. Bradbury \emph{et al.}, JAX (2018).
+\bibitem{todohflimit} TODO: source for the Hartree-Fock limit of Be.
+\bibitem{seth2011} TODO: P. Seth, P. L\'opez R\'ios and R. J. Needs, J. Chem. Phys. (2011).
+\bibitem{morales2012} TODO: M. A. Morales \emph{et al.}, J. Chem. Theory Comput. (2012).
+
+\end{thebibliography}
+
+\end{document}

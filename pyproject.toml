@@ -1,0 +1,39 @@
+[project]
+name = "be-nqs"
+version = "1.0.0"
+description = "VMC and fixed-node DMC for the beryllium atom: which radial freedom moves the node"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Francesco Agus" }]
+keywords = [
+    "quantum-monte-carlo", "variational-monte-carlo",
+    "diffusion-monte-carlo", "fixed-node", "neural-quantum-states",
+    "jax", "computational-physics", "beryllium",
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+# Lower bounds are the versions the published numbers were produced with,
+# not a compatibility claim: older releases are untested, not unsupported.
+# requirements.txt pins them exactly.
+dependencies = [
+    "jax>=0.10.2",
+    "flax>=0.12.8",
+    "numpy>=2.4.6",
+    "scipy>=1.17.1",
+    "matplotlib>=3.11.1",
+]
+
+[project.urls]
+Repository = "https://github.com/kauma03/be-nqs-nodal-study"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

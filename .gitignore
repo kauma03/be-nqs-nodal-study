@@ -1,0 +1,50 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# --- Sistema / editor ---
+.DS_Store
+.vscode/
+.idea/
+
+# --- Output della pipeline ---
+# Rigenerabili: README.md spiega la sequenza di stadi che li produce.
+# Le cartelle restano nel repo (solo .gitkeep), il contenuto no: un
+# "data/" secco impedirebbe a git di scendere nella cartella, e l'eccezione
+# sul .gitkeep non verrebbe mai valutata.
+data/*
+!data/.gitkeep
+results/*
+!results/.gitkeep
+*.npz
+*.png
+
+# --- Log di esecuzione ---
+*.log
+
+# --- Ausiliari LaTeX ---
+*.aux
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
+*.bbl
+*.blg
+*.toc
+
+# --- Pipeline legacy, non pubblicata ---
+OLD/
+
+# --- Eccezioni ---
+# Le figure vettoriali citate dal manoscritto: fanno parte del paper, non
+# sono output grezzo. Cancella queste due righe per un repo di solo codice.
+!paper/figures/
+!paper/figures/*.pdf

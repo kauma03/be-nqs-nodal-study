@@ -1,0 +1,9 @@
+# The environment the published numbers come from (Python 3.11.15).
+# pyproject.toml carries the same versions as lower bounds; these pins are
+# the reproducibility lock.
+jax==0.10.2
+jaxlib==0.10.2
+flax==0.12.8
+numpy==2.4.6
+scipy==1.17.1
+matplotlib==3.11.1
